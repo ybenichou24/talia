@@ -158,7 +158,8 @@
   var state = {
     level: "half",
     right: 0, total: 0, streak: 0,
-    current: null, locked: false
+    current: null, locked: false,
+    used: {}
   };
 
   function save() {
@@ -237,7 +238,14 @@
   // ---------- question building ----------
   function newQuestion() {
     var pool = levelFracs();
-    var answer = pick(pool);
+    if (!state.used[state.level]) state.used[state.level] = {};
+    var available = pool.filter(function (f) { return !state.used[state.level][fracKey(f)]; });
+    if (available.length === 0) {
+      state.used[state.level] = {};
+      available = pool;
+    }
+    var answer = pick(available);
+    state.used[state.level][fracKey(answer)] = true;
 
     var distractors = [];
     var seen = {};

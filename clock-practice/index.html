@@ -156,7 +156,8 @@
     total: 0,
     streak: 0,
     current: null,
-    locked: false
+    locked: false,
+    used: {}
   };
 
   // ---------- storage ----------
@@ -216,9 +217,20 @@
   // ---------- question building ----------
   function newQuestion() {
     var mins = levelMinutes();
-    var h = 1 + Math.floor(Math.random() * 12);
-    var m = pick(mins);
-    var answer = { h: h, m: m };
+    if (!state.used[state.level]) state.used[state.level] = {};
+    var allPossible = [];
+    for (var hi = 1; hi <= 12; hi++) {
+      for (var mi = 0; mi < mins.length; mi++) {
+        allPossible.push({ h: hi, m: mins[mi] });
+      }
+    }
+    var available = allPossible.filter(function (t) { return !state.used[state.level][key(t)]; });
+    if (available.length === 0) {
+      state.used[state.level] = {};
+      available = allPossible;
+    }
+    var answer = pick(available);
+    state.used[state.level][key(answer)] = true;
 
     var pool = [];
     var seen = {};

@@ -183,7 +183,7 @@
     { id: "5", label: "5+ אותיות", len: 5 }
   ];
 
-  var state = { level: "2", right: 0, total: 0, streak: 0, current: null, locked: false };
+  var state = { level: "2", right: 0, total: 0, streak: 0, current: null, locked: false, used: {} };
 
   function save() {
     try { localStorage.setItem("wordImgHE", JSON.stringify({
@@ -212,7 +212,14 @@
 
   function newQuestion() {
     var pool = levelWords();
-    var answer = pick(pool);
+    if (!state.used[state.level]) state.used[state.level] = {};
+    var available = pool.filter(function (w) { return !state.used[state.level][w.word]; });
+    if (available.length === 0) {
+      state.used[state.level] = {};
+      available = pool;
+    }
+    var answer = pick(available);
+    state.used[state.level][answer.word] = true;
     var seen = {}; seen[answer.word] = true;
     var distractors = [];
     var all = pool.slice();
