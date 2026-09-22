@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>לומדים שברים עם עיגולים</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f3f7ff;
+    --card: #ffffff;
+    --ink: #1c2b40;
+    --muted: #64748b;
+    --brand: #7c3aed;
+    --brand-soft: #ede9fe;
+    --good: #16a34a;
+    --good-soft: #dcfce7;
+    --bad: #dc2626;
+    --bad-soft: #fee2e2;
+    --ring: #cbd5e1;
+    --fill: #7c3aed;
+    --fill-light: #ede9fe;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 16px;
+    background: var(--bg); color: var(--ink);
+    font-family: "Assistant", "Heebo", -apple-system, "Segoe UI", system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px;
+  }
+  h1 { font-size: 26px; margin: 0; font-weight: 800; }
+  .score { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 17px; }
+  .pill {
+    background: var(--card); border: 2px solid var(--ring); border-radius: 999px;
+    padding: 6px 14px; white-space: nowrap;
+  }
+  .pill.streak { border-color: #fcd34d; background: #fffbeb; }
+
+  .levels { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .levels button {
+    flex: 1 1 auto; min-width: 110px;
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    padding: 12px 10px; border-radius: 14px; cursor: pointer;
+    border: 2px solid var(--ring); background: var(--card); color: var(--ink);
+    transition: transform .08s ease;
+  }
+  .levels button:active { transform: scale(.97); }
+  .levels button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  .card {
+    background: var(--card); border-radius: 24px; padding: 20px;
+    box-shadow: 0 10px 30px rgba(30,58,138,.08);
+  }
+  .question { text-align: center; font-size: 22px; font-weight: 800; margin: 0 0 10px; }
+
+  .circle-holder { display: flex; justify-content: center; }
+  svg.circle-img { width: min(52vw, 280px); height: auto; display: block; }
+
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .opt {
+    font-family: inherit; text-align: center; cursor: pointer;
+    border: 3px solid var(--ring); background: #fff; color: var(--ink);
+    border-radius: 18px; padding: 14px 8px; min-height: 92px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  }
+  .opt:active { transform: scale(.97); }
+  .opt .fraction { font-size: 34px; font-weight: 800; direction: ltr; }
+  .opt .words { font-size: 17px; font-weight: 600; color: var(--muted); }
+  .opt.correct { background: var(--good-soft); border-color: var(--good); }
+  .opt.correct .words { color: #15803d; }
+  .opt.wrong { background: var(--bad-soft); border-color: var(--bad); opacity: .85; }
+  .opt.dim { opacity: .45; }
+
+  .feedback {
+    margin-top: 16px; min-height: 58px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  }
+  .feedback .msg { font-size: 22px; font-weight: 800; }
+  .feedback .msg.good { color: var(--good); }
+  .feedback .msg.bad { color: var(--bad); }
+  .next {
+    font-family: inherit; font-size: 19px; font-weight: 800; color: #fff;
+    background: var(--brand); border: none; border-radius: 999px;
+    padding: 12px 30px; cursor: pointer;
+  }
+  .next:active { transform: scale(.97); }
+  footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 14px; }
+  .reset {
+    font-family: inherit; font-size: 14px; font-weight: 700; color: var(--muted);
+    background: none; border: none; text-decoration: underline; cursor: pointer;
+  }
+  @media (min-width: 620px) {
+    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
+    .options { margin-top: 0; }
+    svg.circle-img { width: min(36vw, 260px); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🟣 כמה מהעיגול צבוע?</h1>
+    <div class="score">
+      <span class="pill" id="scorePill">0 / 0</span>
+      <span class="pill streak" id="streakPill">🔥 0</span>
+    </div>
+  </header>
+
+  <div class="levels" id="levels"></div>
+
+  <div class="card">
+    <p class="question" id="questionText">איזה חלק מהעיגול צבוע?</p>
+    <div class="main">
+      <div class="circle-holder">
+        <svg class="circle-img" viewBox="0 0 200 200" id="circleImg" aria-label="עיגול"></svg>
+      </div>
+      <div class="options" id="options"></div>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <footer>
+    שבר = חלק מתוך שלם
+    <br><button class="reset" id="resetBtn">אפס ניקוד</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var FRACTIONS = [
+    { n: 0, d: 1, display: "0",   words: "כלום" },
+    { n: 1, d: 4, display: "¼",   words: "רבע" },
+    { n: 1, d: 3, display: "⅓",   words: "שליש" },
+    { n: 1, d: 2, display: "½",   words: "חצי" },
+    { n: 2, d: 3, display: "⅔",   words: "שני שלישים" },
+    { n: 3, d: 4, display: "¾",   words: "שלושה רבעים" },
+    { n: 1, d: 1, display: "1",   words: "שלם" }
+  ];
+
+  function fracKey(f) { return f.n + "/" + f.d; }
+
+  var LEVELS = [
+    { id: "half",     label: "שלם וחצי",  fracs: ["0/1","1/2","1/1"] },
+    { id: "quarters", label: "רבעים",     fracs: ["0/1","1/4","1/2","3/4","1/1"] },
+    { id: "thirds",   label: "שלישים",    fracs: ["0/1","1/3","2/3","1/1"] },
+    { id: "mixed",    label: "מעורב 🎲",   fracs: ["0/1","1/4","1/3","1/2","2/3","3/4","1/1"] }
+  ];
+
+  var state = {
+    level: "half",
+    right: 0, total: 0, streak: 0,
+    current: null, locked: false
+  };
+
+  function save() {
+    try {
+      localStorage.setItem("circleGame", JSON.stringify({
+        level: state.level, right: state.right, total: state.total, streak: state.streak
+      }));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem("circleGame");
+      if (!raw) return;
+      var d = JSON.parse(raw);
+      if (d && typeof d === "object") {
+        if (LEVELS.some(function (l) { return l.id === d.level; })) state.level = d.level;
+        if (typeof d.right === "number") state.right = d.right;
+        if (typeof d.total === "number") state.total = d.total;
+        if (typeof d.streak === "number") state.streak = d.streak;
+      }
+    } catch (e) {}
+  }
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function levelFracs() {
+    var lvl = LEVELS.filter(function (l) { return l.id === state.level; })[0];
+    return FRACTIONS.filter(function (f) { return lvl.fracs.indexOf(fracKey(f)) !== -1; });
+  }
+
+  // ---------- SVG drawing ----------
+  function polarX(cx, r, deg) { return cx + r * Math.cos((deg - 90) * Math.PI / 180); }
+  function polarY(cy, r, deg) { return cy + r * Math.sin((deg - 90) * Math.PI / 180); }
+
+  function drawCircle(frac) {
+    var C = 100, R = 88;
+    var parts = [];
+    var totalSlices = frac.d;
+    var filledSlices = frac.n;
+
+    parts.push("<circle cx='100' cy='100' r='" + R + "' fill='#f1f0fb' stroke='#6d28d9' stroke-width='4'/>");
+
+    if (filledSlices === totalSlices && totalSlices === 1) {
+      parts.push("<circle cx='100' cy='100' r='" + R + "' fill='#7c3aed' stroke='#6d28d9' stroke-width='4'/>");
+    } else if (filledSlices > 0) {
+      for (var i = 0; i < filledSlices; i++) {
+        var startAngle = i * (360 / totalSlices);
+        var endAngle = (i + 1) * (360 / totalSlices);
+        var large = (endAngle - startAngle) > 180 ? 1 : 0;
+        var x1 = polarX(C, R, startAngle);
+        var y1 = polarY(C, R, startAngle);
+        var x2 = polarX(C, R, endAngle);
+        var y2 = polarY(C, R, endAngle);
+        parts.push("<path d='M" + C + "," + C +
+          " L" + x1.toFixed(2) + "," + y1.toFixed(2) +
+          " A" + R + "," + R + " 0 " + large + " 1 " + x2.toFixed(2) + "," + y2.toFixed(2) +
+          " Z' fill='#7c3aed' stroke='#6d28d9' stroke-width='1'/>");
+      }
+    }
+
+    if (totalSlices > 1) {
+      for (var j = 0; j < totalSlices; j++) {
+        var a = j * (360 / totalSlices);
+        var lx = polarX(C, R, a);
+        var ly = polarY(C, R, a);
+        parts.push("<line x1='" + C + "' y1='" + C + "' x2='" + lx.toFixed(2) + "' y2='" + ly.toFixed(2) +
+          "' stroke='#6d28d9' stroke-width='2.5' stroke-linecap='round'/>");
+      }
+    }
+
+    parts.push("<circle cx='100' cy='100' r='" + R + "' fill='none' stroke='#6d28d9' stroke-width='4'/>");
+
+    document.getElementById("circleImg").innerHTML = parts.join("");
+  }
+
+  // ---------- question building ----------
+  function newQuestion() {
+    var pool = levelFracs();
+    var answer = pick(pool);
+
+    var distractors = [];
+    var seen = {};
+    seen[fracKey(answer)] = true;
+
+    var allFracs = FRACTIONS.slice();
+    for (var i = allFracs.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = allFracs[i]; allFracs[i] = allFracs[j]; allFracs[j] = tmp;
+    }
+
+    for (var k = 0; k < allFracs.length && distractors.length < 3; k++) {
+      var f = allFracs[k];
+      if (!seen[fracKey(f)]) {
+        seen[fracKey(f)] = true;
+        distractors.push(f);
+      }
+    }
+
+    var opts = [answer].concat(distractors);
+    for (var a = opts.length - 1; a > 0; a--) {
+      var b = Math.floor(Math.random() * (a + 1));
+      var t = opts[a]; opts[a] = opts[b]; opts[b] = t;
+    }
+
+    state.current = { answer: answer, options: opts };
+    state.locked = false;
+    render();
+  }
+
+  // ---------- rendering ----------
+  function renderLevels() {
+    var box = document.getElementById("levels");
+    box.innerHTML = "";
+    LEVELS.forEach(function (lvl) {
+      var b = document.createElement("button");
+      b.textContent = lvl.label;
+      if (lvl.id === state.level) b.className = "on";
+      b.addEventListener("click", function () {
+        state.level = lvl.id;
+        save(); renderLevels(); newQuestion();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderScore() {
+    document.getElementById("scorePill").textContent = state.right + " / " + state.total;
+    document.getElementById("streakPill").textContent = "🔥 " + state.streak;
+  }
+
+  function render() {
+    var cur = state.current;
+    drawCircle(cur.answer);
+    renderScore();
+    document.getElementById("feedback").innerHTML = "";
+
+    var box = document.getElementById("options");
+    box.innerHTML = "";
+    cur.options.forEach(function (f) {
+      var b = document.createElement("button");
+      b.className = "opt";
+      b.innerHTML = "<span class='fraction'>" + f.display + "</span>" +
+                    "<span class='words'>" + f.words + "</span>";
+      b.addEventListener("click", function () { answer(f, b); });
+      box.appendChild(b);
+    });
+  }
+
+  var PRAISE = ["כל הכבוד! 🎉", "מעולה! ⭐", "נכון מאוד! 👏", "יפה מאוד! 🌟", "אלוף/ה! 🏆"];
+
+  function answer(choice, btn) {
+    if (state.locked) return;
+    state.locked = true;
+    var cur = state.current;
+    var correct = fracKey(choice) === fracKey(cur.answer);
+    state.total++;
+
+    var buttons = document.querySelectorAll(".opt");
+    Array.prototype.forEach.call(buttons, function (b, i) {
+      var f = cur.options[i];
+      var isAnswer = fracKey(f) === fracKey(cur.answer);
+      if (isAnswer) b.classList.add("correct");
+      else if (b === btn) b.classList.add("wrong");
+      else b.classList.add("dim");
+    });
+
+    var fb = document.getElementById("feedback");
+    if (correct) {
+      state.right++;
+      state.streak++;
+      fb.innerHTML = "<div class='msg good'>" + PRAISE[Math.floor(Math.random() * PRAISE.length)] + "</div>";
+    } else {
+      state.streak = 0;
+      fb.innerHTML = "<div class='msg bad'>כמעט! התשובה היא " +
+        "<span style='font-weight:900'>" + cur.answer.display + "</span>" +
+        " – " + cur.answer.words + "</div>";
+    }
+    var nb = document.createElement("button");
+    nb.className = "next";
+    nb.textContent = "שאלה הבאה ←";
+    nb.addEventListener("click", newQuestion);
+    fb.appendChild(nb);
+
+    renderScore();
+    save();
+
+    if (correct) setTimeout(function () { if (state.locked) newQuestion(); }, 1400);
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    state.right = 0; state.total = 0; state.streak = 0;
+    save(); renderScore();
+  });
+
+  load();
+  renderLevels();
+  newQuestion();
+})();
+</script>
+</body>
+</html>
