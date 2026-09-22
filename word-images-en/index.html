@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>What's in the Picture?</title>
+<style>
+  :root {
+    --bg: #f3f7ff;
+    --card: #ffffff;
+    --ink: #1c2b40;
+    --muted: #64748b;
+    --brand: #2563eb;
+    --brand-soft: #dbeafe;
+    --good: #16a34a;
+    --good-soft: #dcfce7;
+    --bad: #dc2626;
+    --bad-soft: #fee2e2;
+    --ring: #cbd5e1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 16px;
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px;
+  }
+  h1 { font-size: 26px; margin: 0; font-weight: 800; }
+  .score { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 17px; }
+  .pill {
+    background: var(--card); border: 2px solid var(--ring); border-radius: 999px;
+    padding: 6px 14px; white-space: nowrap;
+  }
+  .pill.streak { border-color: #fcd34d; background: #fffbeb; }
+  .levels { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .levels button {
+    flex: 1 1 auto; min-width: 100px;
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    padding: 12px 10px; border-radius: 14px; cursor: pointer;
+    border: 2px solid var(--ring); background: var(--card); color: var(--ink);
+    transition: transform .08s ease;
+  }
+  .levels button:active { transform: scale(.97); }
+  .levels button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .card {
+    background: var(--card); border-radius: 24px; padding: 20px;
+    box-shadow: 0 10px 30px rgba(30,58,138,.08);
+  }
+  .question { text-align: center; font-size: 22px; font-weight: 800; margin: 0 0 10px; }
+  .img-holder {
+    display: flex; justify-content: center; align-items: center;
+    font-size: 100px; line-height: 1; padding: 10px 0;
+  }
+  .letter-hint {
+    text-align: center; font-size: 28px; font-weight: 800; letter-spacing: 6px;
+    margin: 8px 0 4px; color: var(--brand);
+  }
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .opt {
+    font-family: inherit; text-align: center; cursor: pointer;
+    border: 3px solid var(--ring); background: #fff; color: var(--ink);
+    border-radius: 18px; padding: 16px 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 800; letter-spacing: 1px;
+    transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  }
+  .opt:active { transform: scale(.97); }
+  .opt.correct { background: var(--good-soft); border-color: var(--good); color: #15803d; }
+  .opt.wrong { background: var(--bad-soft); border-color: var(--bad); opacity: .85; }
+  .opt.dim { opacity: .45; }
+  .feedback {
+    margin-top: 16px; min-height: 58px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  }
+  .feedback .msg { font-size: 22px; font-weight: 800; }
+  .feedback .msg.good { color: var(--good); }
+  .feedback .msg.bad { color: var(--bad); }
+  .next {
+    font-family: inherit; font-size: 19px; font-weight: 800; color: #fff;
+    background: var(--brand); border: none; border-radius: 999px;
+    padding: 12px 30px; cursor: pointer;
+  }
+  .next:active { transform: scale(.97); }
+  footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 14px; }
+  .reset {
+    font-family: inherit; font-size: 14px; font-weight: 700; color: var(--muted);
+    background: none; border: none; text-decoration: underline; cursor: pointer;
+  }
+  @media (min-width: 620px) {
+    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
+    .options { margin-top: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🖼️ What's in the Picture?</h1>
+    <div class="score">
+      <span class="pill" id="scorePill">0 / 0</span>
+      <span class="pill streak" id="streakPill">🔥 0</span>
+    </div>
+  </header>
+  <div class="levels" id="levels"></div>
+  <div class="card">
+    <p class="question" id="questionText">What word matches the picture?</p>
+    <div class="main">
+      <div>
+        <div class="img-holder" id="imgHolder"></div>
+        <div class="letter-hint" id="letterHint"></div>
+      </div>
+      <div class="options" id="options"></div>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+  <footer>
+    Look at the picture and pick the right word!
+    <br><button class="reset" id="resetBtn">Reset Score</button>
+  </footer>
+</div>
+<script>
+(function () {
+  "use strict";
+
+  var WORDS = [
+    { word: "cat", emoji: "🐱" },
+    { word: "dog", emoji: "🐶" },
+    { word: "sun", emoji: "☀️" },
+    { word: "car", emoji: "🚗" },
+    { word: "hat", emoji: "🎩" },
+    { word: "cup", emoji: "☕" },
+    { word: "bed", emoji: "🛏️" },
+    { word: "bus", emoji: "🚌" },
+    { word: "pen", emoji: "🖊️" },
+    { word: "box", emoji: "📦" },
+    { word: "pig", emoji: "🐷" },
+    { word: "cow", emoji: "🐄" },
+    { word: "hen", emoji: "🐔" },
+    { word: "fox", emoji: "🦊" },
+    { word: "bee", emoji: "🐝" },
+    { word: "ant", emoji: "🐜" },
+    { word: "egg", emoji: "🥚" },
+    { word: "fish", emoji: "🐟" },
+    { word: "bird", emoji: "🐦" },
+    { word: "tree", emoji: "🌳" },
+    { word: "star", emoji: "⭐" },
+    { word: "book", emoji: "📖" },
+    { word: "cake", emoji: "🎂" },
+    { word: "moon", emoji: "🌙" },
+    { word: "door", emoji: "🚪" },
+    { word: "frog", emoji: "🐸" },
+    { word: "duck", emoji: "🦆" },
+    { word: "bear", emoji: "🐻" },
+    { word: "ship", emoji: "🚢" },
+    { word: "ball", emoji: "⚽" },
+    { word: "bell", emoji: "🔔" },
+    { word: "drum", emoji: "🥁" },
+    { word: "lion", emoji: "🦁" },
+    { word: "rose", emoji: "🌹" },
+    { word: "apple", emoji: "🍎" },
+    { word: "house", emoji: "🏠" },
+    { word: "horse", emoji: "🐴" },
+    { word: "lemon", emoji: "🍋" },
+    { word: "mouse", emoji: "🐭" },
+    { word: "heart", emoji: "❤️" },
+    { word: "cloud", emoji: "☁️" },
+    { word: "train", emoji: "🚂" },
+    { word: "snake", emoji: "🐍" },
+    { word: "tiger", emoji: "🐯" },
+    { word: "whale", emoji: "🐳" },
+    { word: "grape", emoji: "🍇" },
+    { word: "crown", emoji: "👑" },
+    { word: "piano", emoji: "🎹" },
+    { word: "banana", emoji: "🍌" },
+    { word: "flower", emoji: "🌸" },
+    { word: "rocket", emoji: "🚀" },
+    { word: "turtle", emoji: "🐢" },
+    { word: "cherry", emoji: "🍒" },
+    { word: "rabbit", emoji: "🐰" },
+    { word: "monkey", emoji: "🐵" },
+    { word: "orange", emoji: "🍊" },
+    { word: "pencil", emoji: "✏️" },
+    { word: "guitar", emoji: "🎸" }
+  ];
+
+  var LEVELS = [
+    { id: "3", label: "3 Letters", len: 3 },
+    { id: "4", label: "4 Letters", len: 4 },
+    { id: "5", label: "5 Letters", len: 5 },
+    { id: "6", label: "6 Letters", len: 6 }
+  ];
+
+  var state = { level: "3", right: 0, total: 0, streak: 0, current: null, locked: false };
+
+  function save() {
+    try { localStorage.setItem("wordImgEN", JSON.stringify({
+      level: state.level, right: state.right, total: state.total, streak: state.streak
+    })); } catch (e) {}
+  }
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem("wordImgEN"));
+      if (d) {
+        if (LEVELS.some(function (l) { return l.id === d.level; })) state.level = d.level;
+        if (typeof d.right === "number") state.right = d.right;
+        if (typeof d.total === "number") state.total = d.total;
+        if (typeof d.streak === "number") state.streak = d.streak;
+      }
+    } catch (e) {}
+  }
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function levelWords() {
+    var len = LEVELS.filter(function (l) { return l.id === state.level; })[0].len;
+    return WORDS.filter(function (w) { return w.word.length === len; });
+  }
+
+  function newQuestion() {
+    var pool = levelWords();
+    var answer = pick(pool);
+    var seen = {}; seen[answer.word] = true;
+    var distractors = [];
+    var all = pool.slice();
+    for (var i = all.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = all[i]; all[i] = all[j]; all[j] = t;
+    }
+    for (var k = 0; k < all.length && distractors.length < 3; k++) {
+      if (!seen[all[k].word]) { seen[all[k].word] = true; distractors.push(all[k]); }
+    }
+    if (distractors.length < 3) {
+      var extra = WORDS.slice();
+      for (var x = extra.length - 1; x > 0; x--) {
+        var y = Math.floor(Math.random() * (x + 1));
+        var tmp = extra[x]; extra[x] = extra[y]; extra[y] = tmp;
+      }
+      for (var z = 0; z < extra.length && distractors.length < 3; z++) {
+        if (!seen[extra[z].word]) { seen[extra[z].word] = true; distractors.push(extra[z]); }
+      }
+    }
+    var opts = [answer].concat(distractors);
+    for (var a = opts.length - 1; a > 0; a--) {
+      var b = Math.floor(Math.random() * (a + 1));
+      var t2 = opts[a]; opts[a] = opts[b]; opts[b] = t2;
+    }
+    state.current = { answer: answer, options: opts };
+    state.locked = false;
+    render();
+  }
+
+  function renderLevels() {
+    var box = document.getElementById("levels");
+    box.innerHTML = "";
+    LEVELS.forEach(function (lvl) {
+      var b = document.createElement("button");
+      b.textContent = lvl.label;
+      if (lvl.id === state.level) b.className = "on";
+      b.addEventListener("click", function () {
+        state.level = lvl.id; save(); renderLevels(); newQuestion();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderScore() {
+    document.getElementById("scorePill").textContent = state.right + " / " + state.total;
+    document.getElementById("streakPill").textContent = "🔥 " + state.streak;
+  }
+
+  function render() {
+    var cur = state.current;
+    document.getElementById("imgHolder").textContent = cur.answer.emoji;
+    var hint = "";
+    for (var i = 0; i < cur.answer.word.length; i++) hint += "_ ";
+    document.getElementById("letterHint").textContent = hint.trim();
+    renderScore();
+    document.getElementById("feedback").innerHTML = "";
+    var box = document.getElementById("options");
+    box.innerHTML = "";
+    cur.options.forEach(function (w) {
+      var b = document.createElement("button");
+      b.className = "opt";
+      b.textContent = w.word.toUpperCase();
+      b.addEventListener("click", function () { answer(w, b); });
+      box.appendChild(b);
+    });
+  }
+
+  var PRAISE = ["Great job! 🎉", "Awesome! ⭐", "Correct! 👏", "Well done! 🌟", "Champion! 🏆"];
+
+  function answer(choice, btn) {
+    if (state.locked) return;
+    state.locked = true;
+    var cur = state.current;
+    var correct = choice.word === cur.answer.word;
+    state.total++;
+    var buttons = document.querySelectorAll(".opt");
+    Array.prototype.forEach.call(buttons, function (b, i) {
+      var w = cur.options[i];
+      if (w.word === cur.answer.word) b.classList.add("correct");
+      else if (b === btn) b.classList.add("wrong");
+      else b.classList.add("dim");
+    });
+    var fb = document.getElementById("feedback");
+    if (correct) {
+      state.right++; state.streak++;
+      fb.innerHTML = "<div class='msg good'>" + PRAISE[Math.floor(Math.random() * PRAISE.length)] + "</div>";
+    } else {
+      state.streak = 0;
+      fb.innerHTML = "<div class='msg bad'>Almost! It's <strong>" + cur.answer.word.toUpperCase() + "</strong></div>";
+    }
+    var nb = document.createElement("button");
+    nb.className = "next"; nb.textContent = "Next →";
+    nb.addEventListener("click", newQuestion);
+    fb.appendChild(nb);
+    renderScore(); save();
+    if (correct) setTimeout(function () { if (state.locked) newQuestion(); }, 1400);
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    state.right = 0; state.total = 0; state.streak = 0; save(); renderScore();
+  });
+
+  load(); renderLevels(); newQuestion();
+})();
+</script>
+</body>
+</html>
