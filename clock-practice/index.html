@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>לומדים לקרוא את השעון</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f3f7ff;
+    --card: #ffffff;
+    --ink: #1c2b40;
+    --muted: #64748b;
+    --brand: #2563eb;
+    --brand-soft: #dbeafe;
+    --good: #16a34a;
+    --good-soft: #dcfce7;
+    --bad: #dc2626;
+    --bad-soft: #fee2e2;
+    --ring: #cbd5e1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Assistant", "Heebo", -apple-system, "Segoe UI", system-ui, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px;
+  }
+  h1 { font-size: 26px; margin: 0; font-weight: 800; }
+  .score {
+    display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 17px;
+  }
+  .pill {
+    background: var(--card); border: 2px solid var(--ring); border-radius: 999px;
+    padding: 6px 14px; white-space: nowrap;
+  }
+  .pill.streak { border-color: #fcd34d; background: #fffbeb; }
+
+  .levels { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .levels button {
+    flex: 1 1 auto; min-width: 120px;
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    padding: 12px 10px; border-radius: 14px; cursor: pointer;
+    border: 2px solid var(--ring); background: var(--card); color: var(--ink);
+    transition: transform .08s ease;
+  }
+  .levels button:active { transform: scale(.97); }
+  .levels button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  .card {
+    background: var(--card); border-radius: 24px; padding: 20px;
+    box-shadow: 0 10px 30px rgba(30,58,138,.08);
+  }
+  .question { text-align: center; font-size: 22px; font-weight: 800; margin: 0 0 10px; }
+
+  .clock-holder { display: flex; justify-content: center; }
+  svg.clock { width: min(58vw, 330px); height: auto; display: block; }
+
+  .options {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px;
+  }
+  .opt {
+    font-family: inherit; text-align: center; cursor: pointer;
+    border: 3px solid var(--ring); background: #fff; color: var(--ink);
+    border-radius: 18px; padding: 14px 8px; min-height: 92px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  }
+  .opt:active { transform: scale(.97); }
+  .opt .digits { font-size: 34px; font-weight: 800; letter-spacing: 1px; direction: ltr; }
+  .opt .words { font-size: 17px; font-weight: 600; color: var(--muted); }
+  .opt.correct { background: var(--good-soft); border-color: var(--good); }
+  .opt.correct .words { color: #15803d; }
+  .opt.wrong { background: var(--bad-soft); border-color: var(--bad); opacity: .85; }
+  .opt.dim { opacity: .45; }
+
+  .feedback {
+    margin-top: 16px; min-height: 58px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  }
+  .feedback .msg { font-size: 22px; font-weight: 800; }
+  .feedback .msg.good { color: var(--good); }
+  .feedback .msg.bad { color: var(--bad); }
+  .next {
+    font-family: inherit; font-size: 19px; font-weight: 800; color: #fff;
+    background: var(--brand); border: none; border-radius: 999px;
+    padding: 12px 30px; cursor: pointer;
+  }
+  .next:active { transform: scale(.97); }
+  footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 14px; }
+  .reset {
+    font-family: inherit; font-size: 14px; font-weight: 700; color: var(--muted);
+    background: none; border: none; text-decoration: underline; cursor: pointer;
+  }
+  @media (min-width: 620px) {
+    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
+    .options { grid-template-columns: 1fr 1fr; margin-top: 0; }
+    svg.clock { width: min(40vw, 300px); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⏰ מה השעה?</h1>
+    <div class="score">
+      <span class="pill" id="scorePill">0 / 0</span>
+      <span class="pill streak" id="streakPill">🔥 0</span>
+    </div>
+  </header>
+
+  <div class="levels" id="levels"></div>
+
+  <div class="card">
+    <p class="question" id="questionText">איזו שעה מראה השעון?</p>
+    <div class="main">
+      <div class="clock-holder">
+        <svg class="clock" viewBox="0 0 200 200" id="clock" aria-label="שעון"></svg>
+      </div>
+      <div class="options" id="options"></div>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <footer>
+    מחוג קצר ועבה = שעות · מחוג ארוך ודק = דקות
+    <br><button class="reset" id="resetBtn">אפס ניקוד</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var HOURS = ["שתים עשרה","אחת","שתיים","שלוש","ארבע","חמש","שש","שבע","שמונה","תשע","עשר","אחת עשרה"];
+
+  var LEVELS = [
+    { id: "hours",    label: "שעות עגולות", minutes: [0] },
+    { id: "half",     label: "חצי שעה",     minutes: [0, 30] },
+    { id: "quarters", label: "רבעי שעה",    minutes: [0, 15, 30, 45] },
+    { id: "five",     label: "כל 5 דקות 🎲", minutes: [0,5,10,15,20,25,30,35,40,45,50,55] }
+  ];
+
+  var state = {
+    level: "hours",
+    right: 0,
+    total: 0,
+    streak: 0,
+    current: null,
+    locked: false
+  };
+
+  // ---------- storage ----------
+  function save() {
+    try {
+      localStorage.setItem("clockGame", JSON.stringify({
+        level: state.level, right: state.right, total: state.total, streak: state.streak
+      }));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem("clockGame");
+      if (!raw) return;
+      var d = JSON.parse(raw);
+      if (d && typeof d === "object") {
+        if (LEVELS.some(function (l) { return l.id === d.level; })) state.level = d.level;
+        if (typeof d.right === "number") state.right = d.right;
+        if (typeof d.total === "number") state.total = d.total;
+        if (typeof d.streak === "number") state.streak = d.streak;
+      }
+    } catch (e) {}
+  }
+
+  // ---------- helpers ----------
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function digits(h, m) {
+    return h + ":" + (m < 10 ? "0" + m : m);
+  }
+
+  var MIN_WORDS = { 5: "חמש", 10: "עשר", 20: "עשרים", 25: "עשרים וחמש" };
+
+  function nextHourName(h) {
+    var n = (h % 12) + 1;
+    return HOURS[n % 12];
+  }
+
+  function words(h, m) {
+    var name = HOURS[h % 12];
+    if (m === 0) return name + " בדיוק";
+    if (m === 15) return name + " ורבע";
+    if (m === 30) return name + " וחצי";
+    if (m === 45) return "רבע ל" + nextHourName(h);
+    if (m < 30 && MIN_WORDS[m]) return name + " ו" + MIN_WORDS[m] + " דקות";
+    if (m > 30 && MIN_WORDS[60 - m]) return MIN_WORDS[60 - m] + " דקות ל" + nextHourName(h);
+    return name + " ו-" + m + " דקות";
+  }
+
+  function key(t) { return t.h + "_" + t.m; }
+
+  function levelMinutes() {
+    var lvl = LEVELS.filter(function (l) { return l.id === state.level; })[0];
+    return lvl.minutes;
+  }
+
+  // ---------- question building ----------
+  function newQuestion() {
+    var mins = levelMinutes();
+    var h = 1 + Math.floor(Math.random() * 12);
+    var m = pick(mins);
+    var answer = { h: h, m: m };
+
+    var pool = [];
+    var seen = {};
+    seen[key(answer)] = true;
+
+    function add(t) {
+      if (t.h < 1) t.h += 12;
+      if (t.h > 12) t.h -= 12;
+      if (t.m < 0 || t.m > 59) return;
+      if (seen[key(t)]) return;
+      seen[key(t)] = true;
+      pool.push(t);
+    }
+
+    // classic confusions first
+    if (m !== 0) add({ h: h, m: 0 });                    // ignored the minute hand
+    add({ h: h + 1, m: m });                             // next hour
+    add({ h: h - 1, m: m });                             // previous hour
+    if (m === 45) add({ h: h + 1, m: 15 });              // "quarter to" vs "quarter past"
+    if (m === 15) add({ h: h - 1, m: 45 });
+    if (m === 30) add({ h: h + 1, m: 30 });
+    // hour/minute hand swapped, when it makes sense
+    var swapped = Math.round(m / 5);
+    if (swapped >= 1 && swapped <= 12) add({ h: swapped, m: (h % 12) * 5 % 60 });
+
+    // fill up with random times from the level
+    var guard = 0;
+    while (pool.length < 8 && guard++ < 80) {
+      add({ h: 1 + Math.floor(Math.random() * 12), m: pick(mins) });
+    }
+
+    // shuffle pool, take 3
+    for (var i = pool.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+    }
+    var opts = [answer].concat(pool.slice(0, 3));
+
+    for (var a = opts.length - 1; a > 0; a--) {
+      var b = Math.floor(Math.random() * (a + 1));
+      var t2 = opts[a]; opts[a] = opts[b]; opts[b] = t2;
+    }
+
+    state.current = { answer: answer, options: opts };
+    state.locked = false;
+    render();
+  }
+
+  // ---------- clock drawing ----------
+  function drawClock(h, m) {
+    var C = 100, R = 92;
+    var svg = ["<circle cx='100' cy='100' r='" + R + "' fill='#fff' stroke='#1e3a8a' stroke-width='5'/>"];
+    svg.push("<circle cx='100' cy='100' r='" + (R - 12) + "' fill='none' stroke='#e2e8f5' stroke-width='1.5'/>");
+
+    // minute ticks
+    for (var i = 0; i < 60; i++) {
+      var ang = (i * 6 - 90) * Math.PI / 180;
+      var big = i % 5 === 0;
+      var r1 = big ? R - 16 : R - 10;
+      var r2 = R - 5;
+      svg.push("<line x1='" + (C + r1 * Math.cos(ang)).toFixed(2) + "' y1='" + (C + r1 * Math.sin(ang)).toFixed(2) +
+               "' x2='" + (C + r2 * Math.cos(ang)).toFixed(2) + "' y2='" + (C + r2 * Math.sin(ang)).toFixed(2) +
+               "' stroke='" + (big ? "#1e3a8a" : "#94a3b8") + "' stroke-width='" + (big ? 3.4 : 1.4) + "' stroke-linecap='round'/>");
+    }
+
+    // hour numbers
+    for (var n = 1; n <= 12; n++) {
+      var a2 = (n * 30 - 90) * Math.PI / 180;
+      var rr = R - 30;
+      svg.push("<text x='" + (C + rr * Math.cos(a2)).toFixed(2) + "' y='" + (C + rr * Math.sin(a2) + 7).toFixed(2) +
+               "' text-anchor='middle' font-size='20' font-weight='700' fill='#1e3a8a' font-family='system-ui, sans-serif'>" + n + "</text>");
+    }
+
+    // hands
+    var minAngle = m * 6;
+    var hourAngle = (h % 12) * 30 + m * 0.5;
+    svg.push("<line x1='100' y1='100' x2='100' y2='36' stroke='#2563eb' stroke-width='4' stroke-linecap='round' transform='rotate(" + minAngle + " 100 100)'/>");
+    svg.push("<line x1='100' y1='100' x2='100' y2='58' stroke='#0f172a' stroke-width='8' stroke-linecap='round' transform='rotate(" + hourAngle + " 100 100)'/>");
+    svg.push("<circle cx='100' cy='100' r='6' fill='#0f172a'/>");
+    svg.push("<circle cx='100' cy='100' r='2.4' fill='#fff'/>");
+
+    document.getElementById("clock").innerHTML = svg.join("");
+  }
+
+  // ---------- rendering ----------
+  function renderLevels() {
+    var box = document.getElementById("levels");
+    box.innerHTML = "";
+    LEVELS.forEach(function (lvl) {
+      var b = document.createElement("button");
+      b.textContent = lvl.label;
+      if (lvl.id === state.level) b.className = "on";
+      b.addEventListener("click", function () {
+        state.level = lvl.id;
+        save();
+        renderLevels();
+        newQuestion();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderScore() {
+    document.getElementById("scorePill").textContent = state.right + " / " + state.total;
+    document.getElementById("streakPill").textContent = "🔥 " + state.streak;
+  }
+
+  function render() {
+    var cur = state.current;
+    drawClock(cur.answer.h, cur.answer.m);
+    renderScore();
+    document.getElementById("feedback").innerHTML = "";
+
+    var box = document.getElementById("options");
+    box.innerHTML = "";
+    cur.options.forEach(function (t) {
+      var b = document.createElement("button");
+      b.className = "opt";
+      b.innerHTML = "<span class='digits'>" + digits(t.h, t.m) + "</span>" +
+                    "<span class='words'>" + words(t.h, t.m) + "</span>";
+      b.addEventListener("click", function () { answer(t, b); });
+      box.appendChild(b);
+    });
+  }
+
+  var PRAISE = ["כל הכבוד! 🎉", "מעולה! ⭐", "נכון מאוד! 👏", "יפה מאוד! 🌟", "אלוף/ה! 🏆"];
+
+  function answer(choice, btn) {
+    if (state.locked) return;
+    state.locked = true;
+    var cur = state.current;
+    var correct = choice.h === cur.answer.h && choice.m === cur.answer.m;
+    state.total++;
+
+    var buttons = document.querySelectorAll(".opt");
+    Array.prototype.forEach.call(buttons, function (b, i) {
+      var t = cur.options[i];
+      var isAnswer = t.h === cur.answer.h && t.m === cur.answer.m;
+      if (isAnswer) b.classList.add("correct");
+      else if (b === btn) b.classList.add("wrong");
+      else b.classList.add("dim");
+    });
+
+    var fb = document.getElementById("feedback");
+    if (correct) {
+      state.right++;
+      state.streak++;
+      fb.innerHTML = "<div class='msg good'>" + PRAISE[Math.floor(Math.random() * PRAISE.length)] + "</div>";
+    } else {
+      state.streak = 0;
+      fb.innerHTML = "<div class='msg bad'>כמעט! השעה היא " +
+        "<span style='direction:ltr;display:inline-block'>" + digits(cur.answer.h, cur.answer.m) + "</span>" +
+        " – " + words(cur.answer.h, cur.answer.m) + "</div>";
+    }
+    var nb = document.createElement("button");
+    nb.className = "next";
+    nb.textContent = "שאלה הבאה ←";
+    nb.addEventListener("click", newQuestion);
+    fb.appendChild(nb);
+
+    renderScore();
+    save();
+
+    if (correct) setTimeout(function () { if (state.locked) newQuestion(); }, 1400);
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    state.right = 0; state.total = 0; state.streak = 0;
+    save(); renderScore();
+  });
+
+  load();
+  renderLevels();
+  newQuestion();
+})();
+</script>
+</body>
+</html>
