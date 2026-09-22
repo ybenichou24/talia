@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>טליה - משחקים ופעילויות</title>
+<style>
+  :root {
+    --bg: #f0f4ff;
+    --card: #ffffff;
+    --ink: #1c2b40;
+    --muted: #64748b;
+    --brand: #6366f1;
+    --brand-soft: #e0e7ff;
+    --ring: #c7d2fe;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Assistant", "Heebo", -apple-system, "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 32px; }
+  h1 { font-size: 38px; margin: 0 0 8px; font-weight: 900; }
+  h1 span { display: inline-block; animation: wave 2s ease-in-out infinite; }
+  @keyframes wave { 0%,100% { transform: rotate(0); } 25% { transform: rotate(12deg); } 75% { transform: rotate(-12deg); } }
+  .subtitle { font-size: 18px; color: var(--muted); font-weight: 600; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+
+  .app-card {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--card);
+    border: 2px solid var(--ring);
+    border-radius: 20px;
+    padding: 20px 24px;
+    text-decoration: none; color: inherit;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+    cursor: pointer;
+  }
+  .app-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(99,102,241,0.15);
+    border-color: var(--brand);
+  }
+  .app-card:active { transform: scale(0.98); }
+  .app-icon { font-size: 42px; flex-shrink: 0; }
+  .app-info { flex: 1; }
+  .app-name { font-size: 20px; font-weight: 800; margin: 0 0 4px; }
+  .app-desc { font-size: 15px; color: var(--muted); margin: 0; font-weight: 500; }
+
+  footer {
+    text-align: center; margin-top: 40px; padding-top: 20px;
+    border-top: 1px solid var(--ring);
+    color: var(--muted); font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span>🌟</span> טליה</h1>
+    <p class="subtitle">משחקים ופעילויות לימודיות</p>
+  </header>
+
+  <div class="grid">
+    <!-- APPS START -->
+    <a class="app-card" href="clock-practice/">
+      <div class="app-icon">⏰</div>
+      <div class="app-info">
+        <p class="app-name">לומדים לקרוא את השעון</p>
+        <p class="app-desc">תרגול קריאת שעון אנלוגי עם רמות קושי</p>
+      </div>
+    </a>
+    <!-- APPS END -->
+  </div>
+
+  <footer>טליה 🌟 כל המשחקים במקום אחד</footer>
+</div>
+</body>
+</html>
