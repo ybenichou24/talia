@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>חיבור וחיסור עד 20</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f3f7ff;
+    --card: #ffffff;
+    --ink: #1c2b40;
+    --muted: #64748b;
+    --brand: #2563eb;
+    --brand-soft: #dbeafe;
+    --good: #16a34a;
+    --good-soft: #dcfce7;
+    --bad: #dc2626;
+    --bad-soft: #fee2e2;
+    --ring: #cbd5e1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Assistant", "Heebo", -apple-system, "Segoe UI", system-ui, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .wrap { max-width: 580px; margin: 0 auto; }
+
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px;
+  }
+  h1 { font-size: 26px; margin: 0; font-weight: 800; }
+  .score {
+    display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 17px;
+  }
+  .pill {
+    background: var(--card); border: 2px solid var(--ring); border-radius: 999px;
+    padding: 6px 14px; white-space: nowrap;
+  }
+  .pill.streak { border-color: #fcd34d; background: #fffbeb; }
+
+  .levels { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .levels button {
+    flex: 1 1 auto; min-width: 100px;
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    padding: 12px 10px; border-radius: 14px; cursor: pointer;
+    border: 2px solid var(--ring); background: var(--card); color: var(--ink);
+    transition: transform .08s ease;
+  }
+  .levels button:active { transform: scale(.97); }
+  .levels button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  .card {
+    background: var(--card); border-radius: 24px; padding: 24px;
+    box-shadow: 0 10px 30px rgba(30,58,138,.08);
+    text-align: center;
+  }
+
+  .problem {
+    font-size: 64px; font-weight: 900; margin: 16px 0 28px;
+    direction: ltr; display: flex; align-items: center; justify-content: center; gap: 16px;
+    line-height: 1;
+  }
+  .problem .op { color: var(--brand); }
+
+  .options {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  }
+  .opt {
+    font-family: inherit; font-size: 32px; font-weight: 800;
+    cursor: pointer;
+    border: 3px solid var(--ring); background: #fff; color: var(--ink);
+    border-radius: 18px; padding: 16px 8px;
+    transition: transform .08s ease, background .15s ease, border-color .15s ease;
+  }
+  .opt:active { transform: scale(.95); }
+  .opt.correct { background: var(--good-soft); border-color: var(--good); color: #15803d; }
+  .opt.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+  .opt.dim { opacity: .4; }
+
+  .feedback {
+    margin-top: 20px; min-height: 58px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  }
+  .feedback .msg { font-size: 22px; font-weight: 800; }
+  .feedback .msg.good { color: var(--good); }
+  .feedback .msg.bad { color: var(--bad); }
+  .next {
+    font-family: inherit; font-size: 19px; font-weight: 800; color: #fff;
+    background: var(--brand); border: none; border-radius: 999px;
+    padding: 12px 30px; cursor: pointer;
+  }
+  .next:active { transform: scale(.97); }
+  footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 14px; }
+  .reset {
+    font-family: inherit; font-size: 14px; font-weight: 700; color: var(--muted);
+    background: none; border: none; text-decoration: underline; cursor: pointer;
+  }
+
+  .stars {
+    margin-top: 12px; font-size: 28px; letter-spacing: 4px; min-height: 36px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>➕➖ חשבון עד 20</h1>
+    <div class="score">
+      <span class="pill" id="scorePill">0 / 0</span>
+      <span class="pill streak" id="streakPill">🔥 0</span>
+    </div>
+  </header>
+
+  <div class="levels" id="levels"></div>
+
+  <div class="card">
+    <div class="problem" id="problem"></div>
+    <div class="options" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="stars" id="stars"></div>
+  </div>
+
+  <footer>
+    <button class="reset" id="resetBtn">אפס ניקוד</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var LEVELS = [
+    { id: "add",  label: "חיבור ➕",   ops: ["+"] },
+    { id: "sub",  label: "חיסור ➖",   ops: ["-"] },
+    { id: "mix",  label: "מעורב 🎲", ops: ["+", "-"] }
+  ];
+
+  var state = {
+    level: "add",
+    right: 0,
+    total: 0,
+    streak: 0,
+    current: null,
+    locked: false
+  };
+
+  function save() {
+    try {
+      localStorage.setItem("mathGame", JSON.stringify({
+        level: state.level, right: state.right, total: state.total, streak: state.streak
+      }));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem("mathGame");
+      if (!raw) return;
+      var d = JSON.parse(raw);
+      if (d && typeof d === "object") {
+        if (LEVELS.some(function (l) { return l.id === d.level; })) state.level = d.level;
+        if (typeof d.right === "number") state.right = d.right;
+        if (typeof d.total === "number") state.total = d.total;
+        if (typeof d.streak === "number") state.streak = d.streak;
+      }
+    } catch (e) {}
+  }
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function rand(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+
+  function levelOps() {
+    return LEVELS.filter(function (l) { return l.id === state.level; })[0].ops;
+  }
+
+  function generateProblem() {
+    var op = pick(levelOps());
+    var a, b;
+    if (op === "+") {
+      a = rand(0, 20);
+      b = rand(0, 20 - a);
+    } else {
+      a = rand(0, 20);
+      b = rand(0, a);
+    }
+    var answer = op === "+" ? a + b : a - b;
+    return { a: a, b: b, op: op, answer: answer };
+  }
+
+  function makeDistractors(answer) {
+    var set = {};
+    set[answer] = true;
+    var distractors = [];
+
+    var candidates = [answer + 1, answer - 1, answer + 2, answer - 2, answer + 10, answer - 10];
+    candidates.forEach(function (c) {
+      if (c >= 0 && c <= 20 && !set[c]) {
+        set[c] = true;
+        distractors.push(c);
+      }
+    });
+
+    var guard = 0;
+    while (distractors.length < 3 && guard++ < 50) {
+      var r = rand(0, 20);
+      if (!set[r]) {
+        set[r] = true;
+        distractors.push(r);
+      }
+    }
+    return distractors.slice(0, 3);
+  }
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function newQuestion() {
+    var prob = generateProblem();
+    var distractors = makeDistractors(prob.answer);
+    var options = shuffle([prob.answer].concat(distractors));
+    state.current = { problem: prob, options: options };
+    state.locked = false;
+    render();
+  }
+
+  function renderLevels() {
+    var box = document.getElementById("levels");
+    box.innerHTML = "";
+    LEVELS.forEach(function (lvl) {
+      var b = document.createElement("button");
+      b.textContent = lvl.label;
+      if (lvl.id === state.level) b.className = "on";
+      b.addEventListener("click", function () {
+        state.level = lvl.id;
+        save();
+        renderLevels();
+        newQuestion();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderScore() {
+    document.getElementById("scorePill").textContent = state.right + " / " + state.total;
+    document.getElementById("streakPill").textContent = "🔥 " + state.streak;
+  }
+
+  function renderStars() {
+    var el = document.getElementById("stars");
+    if (state.streak > 0 && state.streak % 5 === 0) {
+      el.textContent = "🌟".repeat(Math.min(state.streak / 5, 4));
+    } else {
+      el.textContent = "";
+    }
+  }
+
+  function render() {
+    var prob = state.current.problem;
+    var problemEl = document.getElementById("problem");
+    problemEl.innerHTML =
+      "<span>" + prob.a + "</span>" +
+      "<span class='op'>" + prob.op + "</span>" +
+      "<span>" + prob.b + "</span>" +
+      "<span class='op'>=</span>" +
+      "<span>?</span>";
+
+    renderScore();
+    document.getElementById("feedback").innerHTML = "";
+    renderStars();
+
+    var box = document.getElementById("options");
+    box.innerHTML = "";
+    state.current.options.forEach(function (val) {
+      var b = document.createElement("button");
+      b.className = "opt";
+      b.textContent = val;
+      b.addEventListener("click", function () { answer(val, b); });
+      box.appendChild(b);
+    });
+  }
+
+  var PRAISE = ["כל הכבוד! 🎉", "מעולה! ⭐", "נכון! 👏", "יופי! 🌟", "אלוף/ה! 🏆", "בול! 💪"];
+
+  function answer(choice, btn) {
+    if (state.locked) return;
+    state.locked = true;
+    var correct = choice === state.current.problem.answer;
+    state.total++;
+
+    var buttons = document.querySelectorAll(".opt");
+    Array.prototype.forEach.call(buttons, function (b) {
+      var val = parseInt(b.textContent, 10);
+      if (val === state.current.problem.answer) b.classList.add("correct");
+      else if (b === btn) b.classList.add("wrong");
+      else b.classList.add("dim");
+    });
+
+    var fb = document.getElementById("feedback");
+    if (correct) {
+      state.right++;
+      state.streak++;
+      fb.innerHTML = "<div class='msg good'>" + pick(PRAISE) + "</div>";
+    } else {
+      state.streak = 0;
+      var prob = state.current.problem;
+      fb.innerHTML = "<div class='msg bad'>התשובה: " +
+        "<span style='direction:ltr;display:inline-block'>" +
+        prob.a + " " + prob.op + " " + prob.b + " = " + prob.answer +
+        "</span></div>";
+    }
+    var nb = document.createElement("button");
+    nb.className = "next";
+    nb.textContent = "שאלה הבאה ←";
+    nb.addEventListener("click", newQuestion);
+    fb.appendChild(nb);
+
+    renderScore();
+    renderStars();
+    save();
+
+    if (correct) setTimeout(function () { if (state.locked) newQuestion(); }, 1200);
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    state.right = 0; state.total = 0; state.streak = 0;
+    save(); renderScore(); renderStars();
+  });
+
+  load();
+  renderLevels();
+  newQuestion();
+})();
+</script>
+</body>
+</html>
